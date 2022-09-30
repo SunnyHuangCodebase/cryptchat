@@ -1,0 +1,5 @@
+header_size = 64
+server = "10.0.0.5"
+port = 5190
+format = "UTF-8"
+disconnect_command = "/disconnect"
