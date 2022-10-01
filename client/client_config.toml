@@ -1,5 +1,6 @@
-header_size = 64
-server = "10.0.0.5"
+header_size = 16
+host = "71.245.250.47"
 port = 5190
 format = "UTF-8"
+connect_command = "/connect"
 disconnect_command = "/disconnect"

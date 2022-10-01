@@ -2,19 +2,13 @@ from __future__ import annotations
 from pathlib import Path
 import socket
 import threading
-from typing import TypedDict
 
 try:
   import tomllib    #type: ignore
 except ModuleNotFoundError:
   import tomli as tomllib    #type: ignore
 
-
-class ServerConfig(TypedDict):
-  header_size: int
-  port: int
-  format: str
-  disconnect_command: str
+from config.config import ServerConfig
 
 
 class Server:
@@ -23,16 +17,15 @@ class Server:
   host: str
   port: int
   format: str
+  connect_command: str
   disconnect_command: str
-  server: socket.socket
 
   def __init__(self, config_path: Path):
-    config = self.load_config(config_path)
+    self.load_config(config_path)
 
-    for item in ServerConfig.__annotations__:
-      self.__dict__[item] = config[item]    #type: ignore
-
-    self.host = socket.gethostbyname(socket.gethostname())
+  @property
+  def address(self) -> tuple[str, int]:
+    return self.host, self.port
 
   def start(self):
     """Start the server."""
@@ -67,13 +60,12 @@ class Server:
 
     connection.close()
 
-  @property
-  def address(self) -> tuple[str, int]:
-    return self.host, self.port
 
-  def load_config(self, path: Path) -> ServerConfig:
+  def load_config(self, path: Path):
     with open(path, "rb") as file:
-      return tomllib.load(file)    #type: ignore
+      config = tomllib.load(file)    #type: ignore
+      for item in ServerConfig.__annotations__:
+        self.__dict__[item] = config[item]    #type: ignore
 
 
 if __name__ == "__main__":

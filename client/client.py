@@ -1,39 +1,29 @@
 from pathlib import Path
 import socket
-from typing import TypedDict
 
 try:
   import tomllib    #type: ignore
 except ModuleNotFoundError:
   import tomli as tomllib    #type: ignore
 
-
-class ClientConfig(TypedDict):
-  header_size: int
-  server: str
-  port: int
-  format: str
-  disconnect_command: str
+from config.config import ServerConfig
 
 
 class Client:
   """Chat client"""
   header_size: int
-  server: str
+  host: str
   port: int
   format: str
+  connect_command: str
   disconnect_command: str
-  client: socket.socket
 
   def __init__(self, config_path: Path):
-    config = self.load_config(config_path)
-
-    for item in ClientConfig.__annotations__:
-      self.__dict__[item] = config[item]    #type: ignore
+    self.load_config(config_path)
 
   @property
   def server_address(self) -> tuple[str, int]:
-    return self.server, self.port
+    return self.host, self.port
 
   def connect(self):
     """Connect to server."""
@@ -60,9 +50,12 @@ class Client:
     self.client.send(encoded_message)
     print(self.client.recv(2048).decode(self.format))
 
-  def load_config(self, path: Path) -> ClientConfig:
+  def load_config(self, path: Path):
     with open(path, "rb") as file:
-      return tomllib.load(file)    #type: ignore
+      config = tomllib.load(file)    #type: ignore
+
+      for item in ServerConfig.__annotations__:
+        self.__dict__[item] = config[item]    #type: ignore
 
 
 if __name__ == "__main__":
