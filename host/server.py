@@ -29,37 +29,54 @@ class Server:
 
   def start(self):
     """Start the server."""
-    self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    self.server.bind(self.address)
-    self.server.listen()
-    print(f"[SERVER STARTED] {self.host}")
-    while True:
-      connection = self.server.accept()    # tuple[socket, address]
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(self.address)
+    server.listen()
+    print(f"[SERVER STARTED] {self.host}:{self.port}")
 
-      thread = threading.Thread(target=self.listen_on_client, args=connection)
+    while True:
+      connection, (ip, port) = server.accept()    # tuple[socket, address]
+      thread = threading.Thread(target=self.connect_to_client,
+                                args=(connection, ip, port))
       thread.start()
-      print(f"[ACTIVE CONNECTIONS]:{threading.active_count() - 1}")
+      print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
 
-  def listen_on_client(self, connection: socket.socket, address: tuple[str,
-                                                                       int]):
-    """Listen for client messages"""
-    print(f"[NEW CONNECTION]: {address}")
-
+  def connect_to_client(self, client: socket.socket, ip: str, port: int):
+    """Listen for client messages and send responses."""
     while True:
-      byte_size = connection.recv(self.header_size).decode(self.format)
-      if not byte_size:
-        return
+      message = self.receive_message(client)
 
-      bytes = int(byte_size)
-      message = connection.recv(bytes).decode(self.format)
-      print(f"[{address}] {message}")
       if message == self.disconnect_command:
+        self.send_message(client, "Disconnected")
+        client.close()
+        print(f"[{ip}:{port}] Disconnected")
         break
 
-      connection.send("Message received".encode(self.format))
+      if message == self.connect_command:
+        print(f"[{ip}:{port}] Connected")
+        self.send_message(client, "Connected")
+        continue
 
-    connection.close()
+      print(f"[{ip}:{port}] {message}")
 
+      self.send_message(client, message)
+
+  def _send_header(self, client: socket.socket, message: str):
+    """Send message header."""
+    header = f"{len(message):<{self.header_size}}"
+    client.send(header.encode(self.format))
+
+  def send_message(self, client: socket.socket, message: str):
+    """Send message."""
+    self._send_header(client, message)
+    encoded_message = message.encode(self.format)
+    client.send(encoded_message)
+
+  def receive_message(self, client: socket.socket) -> str:
+    """Return incoming message."""
+    header = client.recv(self.header_size).decode(self.format)
+    buffer_size = int(header)
+    return client.recv(buffer_size).decode(self.format)
 
   def load_config(self, path: Path):
     with open(path, "rb") as file:

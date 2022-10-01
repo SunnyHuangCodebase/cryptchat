@@ -27,28 +27,38 @@ class Client:
 
   def connect(self):
     """Connect to server."""
-    self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    self.client.connect(self.server_address)
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.connect(self.server_address)
+    self.send_message(server, self.connect_command)
+
     while True:
       message = input()
 
-      self.send(message)
+      if not message:
+        continue
+
+      self.send_message(server, message)
+
       if message == self.disconnect_command:
         break
 
-  def send_header(self, message: str):
-    """Send message header"""
-    message_length = len(message)
-    header = f"{message_length:<{self.header_size}}"
-    encoded_header = header.encode(self.format)
-    self.client.send(encoded_header)
+  def _send_header(self, server: socket.socket, message: str):
+    """Send message header."""
+    header = f"{len(message):<{self.header_size}}"
+    server.send(header.encode(self.format))
 
-  def send(self, message: str):
+  def send_message(self, server: socket.socket, message: str):
     """Send message."""
-    self.send_header(message)
+    self._send_header(server, message)
     encoded_message = message.encode(self.format)
-    self.client.send(encoded_message)
-    print(self.client.recv(2048).decode(self.format))
+    server.send(encoded_message)
+    print(self._receive_response(server))
+
+  def _receive_response(self, server: socket.socket) -> str:
+    header = server.recv(self.header_size).decode(self.format)
+
+    buffer_size = int(header)
+    return server.recv(buffer_size).decode(self.format)
 
   def load_config(self, path: Path):
     with open(path, "rb") as file:
