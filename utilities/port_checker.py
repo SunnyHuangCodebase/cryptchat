@@ -2,7 +2,6 @@ import socket
 import threading
 from time import sleep
 
-# host = socket.gethostbyname("localhost")
 host = socket.gethostbyname(socket.gethostname())
 
 
@@ -14,32 +13,31 @@ class Port(int):
     return max(0, number)
 
 
-def check_port(port: int):
-  try:
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.settimeout(0.1)
-    server.connect((host, port))
-    ports_in_use.add(port)
-    server.close()
+def check_port(port: int, timeout: float):
+  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+    try:
+      server.settimeout(timeout)
+      server.connect((host, port))
+      ports_in_use.add(port)
 
-  except socket.error:
-    available_ports.add(port)
+    except socket.error:
+      available_ports.add(port)
 
 
-def check_open_ports(start: int, end: int | None = None):
+def check_open_ports(start: int, end: int | None = None, timeout: float = 0.1):
 
   if not end:
-    check_port(Port(start))
+    check_port(Port(start), timeout)
     return
 
   port_range = range(Port(start), Port(end + 1))
 
   for port in port_range:
     print(f"Checking port {port}")
-    thread = threading.Thread(target=check_port, args=(port,))
+    thread = threading.Thread(target=check_port, args=(port, timeout))
     thread.start()
 
-  sleep(0.2)
+  sleep(timeout + 0.1)
 
 
 if __name__ == "__main__":
