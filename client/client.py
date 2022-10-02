@@ -1,5 +1,7 @@
+import json
 from pathlib import Path
 import socket
+from typing import Any
 
 try:
   import tomllib    #type: ignore
@@ -32,6 +34,8 @@ class Client:
     self.send_message(server, self.connect_command)
 
     while True:
+      print(self.receive_response(server))
+
       message = input()
 
       if not message:
@@ -42,23 +46,24 @@ class Client:
       if message == self.disconnect_command:
         break
 
-  def _send_header(self, server: socket.socket, message: str):
+  def _send_header(self, server: socket.socket, message: Any):
     """Send message header."""
     header = f"{len(message):<{self.header_size}}"
     server.send(header.encode(self.format))
 
-  def send_message(self, server: socket.socket, message: str):
+  def send_message(self, server: socket.socket, message: Any):
     """Send message."""
-    self._send_header(server, message)
-    encoded_message = message.encode(self.format)
-    server.send(encoded_message)
-    print(self._receive_response(server))
+    json_message = json.dumps(message)
+    bytes_message = json_message.encode(self.format)
+    self._send_header(server, bytes_message)
+    server.send(bytes_message)
 
-  def _receive_response(self, server: socket.socket) -> str:
+  def receive_response(self, server: socket.socket) -> str:
     header = server.recv(self.header_size).decode(self.format)
-
     buffer_size = int(header)
-    return server.recv(buffer_size).decode(self.format)
+    response = server.recv(buffer_size)
+    response = json.loads(response.decode(self.format))
+    return str(response)
 
   def load_config(self, path: Path):
     with open(path, "rb") as file:

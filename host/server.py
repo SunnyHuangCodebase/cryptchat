@@ -1,7 +1,10 @@
 from __future__ import annotations
+import json
 from pathlib import Path
 import socket
 import threading
+import time
+from typing import Any
 
 try:
   import tomllib    #type: ignore
@@ -46,37 +49,45 @@ class Server:
     while True:
       message = self.receive_message(client)
 
+      if message == self.connect_command:
+        print(f"[{ip}:{port}] Connected")
+        connected = {
+            "Server": self.address,
+            "Time": time.time(),
+            "Total Online Users": threading.active_count() - 1
+        }
+        self.send_message(client, connected)
+        continue
+
       if message == self.disconnect_command:
         self.send_message(client, "Disconnected")
         client.close()
         print(f"[{ip}:{port}] Disconnected")
         break
 
-      if message == self.connect_command:
-        print(f"[{ip}:{port}] Connected")
-        self.send_message(client, "Connected")
-        continue
-
       print(f"[{ip}:{port}] {message}")
 
       self.send_message(client, message)
 
-  def _send_header(self, client: socket.socket, message: str):
+  def _send_header(self, client: socket.socket, message: Any):
     """Send message header."""
     header = f"{len(message):<{self.header_size}}"
     client.send(header.encode(self.format))
 
-  def send_message(self, client: socket.socket, message: str):
+  def send_message(self, client: socket.socket, message: Any):
     """Send message."""
-    self._send_header(client, message)
-    encoded_message = message.encode(self.format)
-    client.send(encoded_message)
+    json_message = json.dumps(message)
+    bytes_message = json_message.encode(self.format)
+    self._send_header(client, bytes_message)
+    client.send(bytes_message)
 
   def receive_message(self, client: socket.socket) -> str:
     """Return incoming message."""
     header = client.recv(self.header_size).decode(self.format)
     buffer_size = int(header)
-    return client.recv(buffer_size).decode(self.format)
+    response = client.recv(buffer_size)
+    response = json.loads(response.decode(self.format))
+    return str(response)
 
   def load_config(self, path: Path):
     with open(path, "rb") as file:
