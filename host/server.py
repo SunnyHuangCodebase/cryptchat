@@ -1,20 +1,20 @@
 from __future__ import annotations
-import json
 from pathlib import Path
-import socket
+from socket import socket, AF_INET, SOCK_STREAM
 import threading
 import time
-from typing import Any
+
+from devices.node import Node
 
 try:
   import tomllib    #type: ignore
 except ModuleNotFoundError:
   import tomli as tomllib    #type: ignore
 
-from config.config import ServerConfig
+from message.message_types import MessageType
 
 
-class Server:
+class ChatServer(Node):
   """Chat server"""
   header_size: int
   host: str
@@ -22,9 +22,14 @@ class Server:
   format: str
   connect_command: str
   disconnect_command: str
+  chats: dict[str, list[socket]]
 
-  def __init__(self, config_path: Path):
+  def __init__(self):
+    self.server = socket(AF_INET, SOCK_STREAM)
+    config_path = Path(__file__).parent / "server_config.toml"
     self.load_config(config_path)
+    self.server.bind(self.address)
+    self.chats = {}
 
   @property
   def address(self) -> tuple[str, int]:
@@ -32,71 +37,55 @@ class Server:
 
   def start(self):
     """Start the server."""
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(self.address)
-    server.listen()
-    print(f"[SERVER STARTED] {self.host}:{self.port}")
+    self.server.listen()
+    print(f"[SERVER STARTED]{self.host}: {self.port}")
 
     while True:
-      connection, (ip, port) = server.accept()    # tuple[socket, address]
+      connection, (ip, port) = self.server.accept()
       thread = threading.Thread(target=self.connect_to_client,
                                 args=(connection, ip, port))
       thread.start()
       print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
 
-  def connect_to_client(self, client: socket.socket, ip: str, port: int):
+  def connect_to_client(self, client: socket, ip: str, port: int):
     """Listen for client messages and send responses."""
     while True:
       message = self.receive_message(client)
+      print(message)
 
-      if message == self.connect_command:
+      if message["type"] == MessageType.LOGIN:
         print(f"[{ip}:{port}] Connected")
+
+        #TODO: Hash this auth token for security before using it as a chat id.
+        auth_token = message["auth_token"]
+        #auth_token = self.hash(message["auth_token"])
+
+        self.chats[auth_token] = self.chats.get(auth_token, [])
+        self.chats[auth_token].append(client)
+
         connected = {
             "Server": self.address,
             "Time": time.time(),
-            "Total Online Users": threading.active_count() - 1
+            "Chatroom Participants": len(self.chats),
+            "auth_token": auth_token,
+            "total_online": threading.active_count() - 1,
         }
         self.send_message(client, connected)
         continue
 
-      if message == self.disconnect_command:
-        self.send_message(client, "Disconnected")
+      if message["type"] == MessageType.LOGOUT:
+        self.send_message(client, {"status": "Disconnected"})
         client.close()
         print(f"[{ip}:{port}] Disconnected")
         break
 
       print(f"[{ip}:{port}] {message}")
 
+      #TODO: Send message to all chatroom participants.
+
       self.send_message(client, message)
-
-  def _send_header(self, client: socket.socket, message: Any):
-    """Send message header."""
-    header = f"{len(message):<{self.header_size}}"
-    client.send(header.encode(self.format))
-
-  def send_message(self, client: socket.socket, message: Any):
-    """Send message."""
-    json_message = json.dumps(message)
-    bytes_message = json_message.encode(self.format)
-    self._send_header(client, bytes_message)
-    client.send(bytes_message)
-
-  def receive_message(self, client: socket.socket) -> str:
-    """Return incoming message."""
-    header = client.recv(self.header_size).decode(self.format)
-    buffer_size = int(header)
-    response = client.recv(buffer_size)
-    response = json.loads(response.decode(self.format))
-    return str(response)
-
-  def load_config(self, path: Path):
-    with open(path, "rb") as file:
-      config = tomllib.load(file)    #type: ignore
-      for item in ServerConfig.__annotations__:
-        self.__dict__[item] = config[item]    #type: ignore
 
 
 if __name__ == "__main__":
-  config_path = Path(__file__).parent / "server_config.toml"
-  server = Server(config_path)
+  server = ChatServer()
   server.start()
