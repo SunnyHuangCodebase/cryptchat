@@ -13,7 +13,7 @@ except ModuleNotFoundError:
 from config.config import ServerConfig
 from message.message_types import MessageType
 from user.user import User
-from message.encryption import PasswordEncryption
+from message.encryption import PasswordDecryption, PasswordEncryption
 
 
 class ChatClient(Node):
@@ -73,12 +73,9 @@ class ChatClient(Node):
     password = input("Enter chatroom encryption password: ")
 
     authentication = {
-        "type":
-            MessageType.LOGIN,
-        "username":
-            self.username,
-        "auth_token":
-            self.generate_authentication_token(self.chatroom, password)
+        "type": MessageType.LOGIN,
+        "username": self.username,
+        "auth_token": self.encrypt_data(self.chatroom, password)
     }
 
     self.send_message(self.server, authentication)
@@ -91,9 +88,15 @@ class ChatClient(Node):
     """Verifies user and password hash against server's user database."""
     pass
 
-  def generate_authentication_token(self, username: str, password: str) -> str:
+  def encrypt_data(self, data: str, password: str) -> str:
+    """Encrypts data using a password."""
     encrypter = PasswordEncryption(password)
-    return encrypter.encrypt(username).decode()
+    return encrypter.encrypt(data).decode()
+
+  def decrypt_data(self, data: bytes, password: str) -> str:
+    """Encrypts data using a password."""
+    encrypter = PasswordDecryption(password)
+    return encrypter.decrypt(data)
 
   def request_user(self, ip: str):
     message = {"type": MessageType.COMMAND, "target": ip, "message": ip}
