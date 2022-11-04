@@ -74,21 +74,26 @@ class StoredKeyDecryption:
 
 
 class KeyGen:
-  """A key generator to provide a key based on a password."""
+  """A key generator to provide a hash key based on provided password and salt."""
 
-  def generate_key(self, password: str | None = None) -> bytes:
-    """Generate a key from inputted password."""
-    if not password:
-      password = input()
-    encoded_password = password.encode()
-    salt = b'\xde\xe04\xd7\xeb\xd04\xd7ah\xa8\x8e\xa5\xb1\xe9>'
+  def generate_hash(self,
+                    data: str | None = None,
+                    salt_string: str | None = None) -> bytes:
+    """Generate a key from provided password and salt."""
+    if not data:
+      data = input()
+
+    if not salt_string:
+      salt = b'\xde\xe04\xd7\xeb\xd04\xd7ah\xa8\x8e\xa5\xb1\xe9>'
+    else:
+      salt = salt_string.encode()
     kdf = PBKDF2HMAC(algorithm=hashes.SHA256(),
                      length=32,
                      salt=salt,
                      iterations=100000,
                      backend=default_backend())
 
-    return base64.urlsafe_b64encode(kdf.derive(encoded_password))
+    return base64.urlsafe_b64encode(kdf.derive(data.encode()))
 
 
 class PasswordEncryption:
@@ -96,7 +101,7 @@ class PasswordEncryption:
 
   def __init__(self, password: str | None = None):
     keygen = KeyGen()
-    self.key = keygen.generate_key(password)
+    self.key = keygen.generate_hash(password)
 
   def encrypt(self, message: str) -> bytes:
     """Encrypts a message from a key generated from a password."""
@@ -110,7 +115,7 @@ class PasswordDecryption:
 
   def __init__(self, password: str | None = None):
     keygen = KeyGen()
-    self.key = keygen.generate_key(password)
+    self.key = keygen.generate_hash(password)
 
   def decrypt(self, encrypted_message: bytes) -> str:
     """Decrypts a message from a key generated from a password."""

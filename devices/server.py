@@ -55,19 +55,20 @@ class ChatServer(Node):
 
       if message["type"] == MessageType.LOGIN:
         print(f"[{ip}:{port}] Connected")
+        chatroom_id = message["chat_id"]
+        status = "New chatroom created" if self.chats.get(
+            chatroom_id) else "Joined chatroom"
 
-        #TODO: Hash this auth token for security before using it as a chat id.
-        auth_token = message["auth_token"]
-        #auth_token = self.hash(message["auth_token"])
+        self.chats[chatroom_id] = self.chats.get(chatroom_id, [])
 
-        self.chats[auth_token] = self.chats.get(auth_token, [])
-        self.chats[auth_token].append(client)
+        self.chats[chatroom_id].append(client)
 
         connected = {
             "Server": self.address,
             "Time": time.time(),
             "Chatroom Participants": len(self.chats),
-            "auth_token": auth_token,
+            "chat_id": chatroom_id,
+            "message": status,
             "total_online": threading.active_count() - 1,
         }
         self.send_message(client, connected)
@@ -79,11 +80,15 @@ class ChatServer(Node):
         print(f"[{ip}:{port}] Disconnected")
         break
 
-      print(f"[{ip}:{port}] {message}")
-
-      #TODO: Send message to all chatroom participants.
-
-      self.send_message(client, message)
+      if message["type"] == MessageType.MESSAGE:
+        chat_id = message["chat_id"]
+        for participant in self.chats[chat_id]:
+          print(participant)
+          self.send_message(
+              participant, {
+                  "sender": message["sender"],
+                  "message": f"{message['sender']}: {message['message']}"
+              })
 
 
 if __name__ == "__main__":
