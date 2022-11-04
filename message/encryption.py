@@ -76,10 +76,11 @@ class StoredKeyDecryption:
 class KeyGen:
   """A key generator to provide a key based on a password."""
 
-  def generate_key(self) -> bytes:
+  def generate_key(self, password: str | None = None) -> bytes:
     """Generate a key from inputted password."""
-    password_input = input()
-    password = password_input.encode()
+    if not password:
+      password = input()
+    encoded_password = password.encode()
     salt = b'\xde\xe04\xd7\xeb\xd04\xd7ah\xa8\x8e\xa5\xb1\xe9>'
     kdf = PBKDF2HMAC(algorithm=hashes.SHA256(),
                      length=32,
@@ -87,15 +88,15 @@ class KeyGen:
                      iterations=100000,
                      backend=default_backend())
 
-    return base64.urlsafe_b64encode(kdf.derive(password))
+    return base64.urlsafe_b64encode(kdf.derive(encoded_password))
 
 
 class PasswordEncryption:
   key: bytes
 
-  def __init__(self):
+  def __init__(self, password: str | None = None):
     keygen = KeyGen()
-    self.key = keygen.generate_key()
+    self.key = keygen.generate_key(password)
 
   def encrypt(self, message: str) -> bytes:
     """Encrypts a message from a key generated from a password."""
@@ -107,9 +108,9 @@ class PasswordEncryption:
 class PasswordDecryption:
   key: bytes
 
-  def __init__(self):
+  def __init__(self, password: str | None = None):
     keygen = KeyGen()
-    self.key = keygen.generate_key()
+    self.key = keygen.generate_key(password)
 
   def decrypt(self, encrypted_message: bytes) -> str:
     """Decrypts a message from a key generated from a password."""
