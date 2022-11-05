@@ -1,18 +1,16 @@
-from datetime import datetime, timedelta
-from pathlib import Path
-from socket import socket, AF_INET, SOCK_STREAM
-from typing import Any
-
-from devices.node import Node
-
 try:
   import tomllib    #type: ignore
 except ModuleNotFoundError:
   import tomli as tomllib    #type: ignore
 
-from config.config import ServerConfig
+from datetime import datetime, timedelta
+from socket import socket, AF_INET, SOCK_STREAM
 import threading
 from time import sleep
+from typing import Any
+
+from devices.config import ClientConfig, Config
+from devices.node import Node
 from message.message_types import MessageType
 from user.user import User
 from message.encryption import KeyGen, PasswordDecryption, PasswordEncryption
@@ -20,12 +18,7 @@ from message.encryption import KeyGen, PasswordDecryption, PasswordEncryption
 
 class ChatClient(Node):
   """Chat client"""
-  header_size: int
-  host: str
-  port: int
-  format: str
-  connect_command: str
-  disconnect_command: str
+  config: Config
   time_zone: timedelta
   chatroom: str
   auth_token: str
@@ -33,14 +26,14 @@ class ChatClient(Node):
 
   def __init__(self):
     self.server = socket(AF_INET, SOCK_STREAM)
-    config_path = Path(__file__).parent / "client_config.toml"
-    self.load_config(config_path)
+    self.config = ClientConfig()
     self.time_zone = datetime.now().astimezone().utcoffset() or timedelta(0)
     self.chatroom = ""
 
   @property
   def server_address(self) -> tuple[str, int]:
-    return self.host, self.port
+    """Returns the public address to accept connections."""
+    return self.config.host, self.config.port
 
   def listen_for_messages(self):
     """Print any incoming messagse with a 2 second delay timer.
@@ -82,7 +75,7 @@ class ChatClient(Node):
               "message": message
           })
 
-      if message == self.disconnect_command:
+      if message == self.config.disconnect_command:
         break
 
   def join_chatroom(self):
@@ -100,7 +93,6 @@ class ChatClient(Node):
 
     self.send_message(self.server, authentication)
     response = self.receive_message(self.server)
-    # self.chatroom = response["chat_id"]
 
   def authenticate(self, response: dict[str, Any]):
     """Verifies user and password hash against server's user database."""

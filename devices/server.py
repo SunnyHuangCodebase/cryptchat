@@ -3,6 +3,7 @@ from pathlib import Path
 from socket import socket, AF_INET, SOCK_STREAM
 import threading
 import time
+from devices.config import Config, ServerConfig
 
 from devices.node import Node
 
@@ -16,29 +17,38 @@ from message.message_types import MessageType
 
 class ChatServer(Node):
   """Chat server"""
-  header_size: int
-  host: str
-  port: int
-  format: str
-  connect_command: str
-  disconnect_command: str
+  config: Config
   chats: dict[str, list[socket]]
 
   def __init__(self):
-    self.server = socket(AF_INET, SOCK_STREAM)
-    config_path = Path(__file__).parent / "server_config.toml"
-    self.load_config(config_path)
-    self.server.bind(self.address)
+    self.config = ServerConfig()
     self.chats = {}
+    self.start_server()
+    self.await_connections()
+
+  def start_server(self):
+    """Start the server."""
+    self.server = socket(AF_INET, SOCK_STREAM)
+    self.server.bind(self.local_address)
+    print(f"[SERVER STARTED] {self.config.host} : {self.config.port}")
 
   @property
-  def address(self) -> tuple[str, int]:
-    return self.host, self.port
+  def local_address(self) -> tuple[str, int]:
+    """Returns the local address to start the server."""
+    return "", self.config.port
 
-  def start(self):
-    """Start the server."""
+  @property
+  def local_host(self) -> tuple[str, int]:
+    """Returns localhost:8000 to start the server for debugging."""
+    return "localhost", 8000
+
+  @property
+  def public_address(self) -> tuple[str, int]:
+    return self.config.host, self.config.port
+
+  def await_connections(self):
+    """Waits for incoming connections."""
     self.server.listen()
-    print(f"[SERVER STARTED]{self.host}: {self.port}")
 
     while True:
       connection, (ip, port) = self.server.accept()
@@ -52,6 +62,7 @@ class ChatServer(Node):
     while True:
       message = self.receive_message(client)
       print(message)
+      print(f"[{ip}:{port}] {message}")
 
       if message["type"] == MessageType.LOGIN:
         print(f"[{ip}:{port}] Connected")
@@ -64,7 +75,7 @@ class ChatServer(Node):
         self.chats[chatroom_id].append(client)
 
         connected = {
-            "Server": self.address,
+            "Server": self.public_address,
             "Time": time.time(),
             "Chatroom Participants": len(self.chats),
             "chat_id": chatroom_id,
@@ -93,4 +104,3 @@ class ChatServer(Node):
 
 if __name__ == "__main__":
   server = ChatServer()
-  server.start()
