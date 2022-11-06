@@ -1,7 +1,7 @@
 import base64
 
 from pathlib import Path
-from typing import Protocol
+from typing import Callable, Protocol
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -37,24 +37,24 @@ class StoredKeyEncryption:
     """Creates an encryption key."""
     return Fernet.generate_key()
 
-  def save_key(self):
+  def save_key(self) -> None:
     """Saves the key"""
     with open(self.path, "rb+") as file:
       file.write(self.key)
 
-  def encrypt(self, message: str):
+  def encrypt(self, message: str) -> bytes:
     """Encrypts a message using a key stored in a key file."""
-    encoded_message = message.encode()
-    fernet = Fernet(self.key)
+    encoded_message: bytes = message.encode()
+    fernet: Fernet = Fernet(self.key)
     return fernet.encrypt(encoded_message)
 
 
 class StoredKeyDecryption:
-  path = Path("encryption.key")
+  path: Path = Path("encryption.key")
   key: bytes
 
   def __init__(self) -> None:
-    key = self.load_key()
+    key: bytes | None = self.load_key()
 
     if not key:
       raise Exception("No Encryption Key")
@@ -66,32 +66,31 @@ class StoredKeyDecryption:
     with open(self.path, "rb") as file:
       return file.read()
 
-  def decrypt(self, encrypted_message: str):
+  def decrypt(self, encrypted_message: str) -> str:
     """Decrypts a message using a key stored in a key file."""
-    fernet = Fernet(self.key)
-    encoded_message = fernet.decrypt(encrypted_message)
+    fernet: Fernet = Fernet(self.key)
+    encoded_message: bytes = fernet.decrypt(encrypted_message)
     return encoded_message.decode()
 
 
 class KeyGen:
   """A key generator to provide a hash key based on provided password and salt."""
 
-  def generate_hash(self,
-                    data: str | None = None,
-                    salt_string: str | None = None) -> bytes:
+  @staticmethod
+  def generate_hash(data: str = "", salt_string: str = "") -> bytes:
     """Generate a key from provided password and salt."""
     if not data:
       data = input()
 
     if not salt_string:
-      salt = b'\xde\xe04\xd7\xeb\xd04\xd7ah\xa8\x8e\xa5\xb1\xe9>'
+      salt: bytes = b'\xde\xe04\xd7\xeb\xd04\xd7ah\xa8\x8e\xa5\xb1\xe9>'
     else:
       salt = salt_string.encode()
-    kdf = PBKDF2HMAC(algorithm=hashes.SHA256(),
-                     length=32,
-                     salt=salt,
-                     iterations=100000,
-                     backend=default_backend())
+    kdf: PBKDF2HMAC = PBKDF2HMAC(algorithm=hashes.SHA256(),
+                                 length=32,
+                                 salt=salt,
+                                 iterations=100000,
+                                 backend=default_backend())
 
     return base64.urlsafe_b64encode(kdf.derive(data.encode()))
 
@@ -99,23 +98,21 @@ class KeyGen:
 class PasswordEncryption:
   key: bytes
 
-  def __init__(self, password: str | None = None):
-    keygen = KeyGen()
-    self.key = keygen.generate_hash(password)
+  def __init__(self, password: str) -> None:
+    self.key = KeyGen.generate_hash(password)
 
   def encrypt(self, message: str) -> bytes:
     """Encrypts a message from a key generated from a password."""
-    encoded_message = message.encode()
-    fernet = Fernet(self.key)
+    encoded_message: bytes = message.encode()
+    fernet: Fernet = Fernet(self.key)
     return fernet.encrypt(encoded_message)
 
 
 class PasswordDecryption:
   key: bytes
 
-  def __init__(self, password: str | None = None):
-    keygen = KeyGen()
-    self.key = keygen.generate_hash(password)
+  def __init__(self, password: str) -> None:
+    self.key = KeyGen.generate_hash(password)
 
   def decrypt(self, encrypted_message: bytes) -> str:
     """Decrypts a message from a key generated from a password."""
@@ -124,16 +121,16 @@ class PasswordDecryption:
     return encoded_message.decode()
 
 
-def encrypt(encrypter: Encrypter):
+def encrypt(encrypter: Encrypter) -> Callable[[str], bytes]:
   """Encryption decorator. Encrypts text using a secret key."""
 
-  def wrapper(message: str):
+  def wrapper(message: str) -> bytes:
     return encrypter.encrypt(message)
 
   return wrapper
 
 
-def decrypt(decrypter: Decrypter):
+def decrypt(decrypter: Decrypter) -> Callable[[bytes], str]:
   """Decryption decorator. Decrypts text using a secret key."""
 
   def wrapper(message: bytes):

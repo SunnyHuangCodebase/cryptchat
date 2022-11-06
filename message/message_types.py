@@ -2,11 +2,10 @@ from enum import auto, Enum
 
 
 class MessageType(str, Enum):
-  LOGIN = auto()
-  LOGOUT = auto()
+  CONNECT = auto()
+  DISCONNECT = auto()
   NOTICE = auto()
   MESSAGE = auto()
-  JOIN = auto()
   COMMAND = auto()
   FILE = auto()
 

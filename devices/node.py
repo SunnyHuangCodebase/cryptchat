@@ -7,14 +7,18 @@ from typing import Any
 
 from devices.config import Config
 
+#TODO: Create Address object consisting of IP: Port
+
 
 class Node(ABC):
   """A device capable of receiving and sending data."""
   config: Config
-  server: socket
+  server: socket = socket(AF_INET, SOCK_STREAM)
 
   @property
-  def address(self) -> tuple[str, int]:
+  def server_address(self) -> tuple[str, int]:
+    """Returns the server address for clients to connect."""
+
     return self.config.host, self.config.port
 
   def connect(self):
