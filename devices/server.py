@@ -94,7 +94,8 @@ class ChatServer(Node):
     """Sends message to all chat particpants."""
     print(f"{message['sender']}: {message['message']}")
     response: dict[str, str] = {
-        "message": f"{message['sender']}: {message['message']}"
+        "sender": message['sender'],
+        "message": message['message']
     }
     for recipient in self.chats.get(chat_id, []):
       self.send_message(recipient, response)

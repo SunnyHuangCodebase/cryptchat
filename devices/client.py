@@ -6,7 +6,7 @@ from devices.config import ClientConfig, Config
 from devices.node import Node
 from message.message_types import MessageType
 from user.user import User
-from message.encryption import KeyGen, PasswordDecryption, PasswordEncryption
+from message.encryption import KeyGen, PasswordEncryption
 
 #TODO: Add database verification and registration.
 
@@ -19,6 +19,7 @@ class ChatClient(Node):
   chatroom: str
   time_zone: timedelta
   user: User
+  encryption: PasswordEncryption
 
   def __init__(self, debug: bool = False) -> None:
     self.config = ClientConfig(debug)
@@ -38,6 +39,7 @@ class ChatClient(Node):
     self.username: str = input("Enter your username: ")
     chatroom: str = input("Enter chatroom name: ")
     password: str = input("Enter chatroom encryption password: ")
+    self.encryption: PasswordEncryption = PasswordEncryption(password)
     self.chatroom = KeyGen.generate_hash(chatroom, password).decode()
     print(DELETE_PREV_LINE * 3, end="")
 
@@ -60,8 +62,9 @@ class ChatClient(Node):
 
       if not message:
         continue
-
-      print(f"{message['message']}")
+      sender: str = message['sender']
+      contents: str = self.encryption.decrypt(message['message'].encode())
+      print(f"{sender}: {contents}")
 
   def await_outgoing_messages(self) -> None:
     """Waits for user messages to send to the server."""
@@ -80,20 +83,10 @@ class ChatClient(Node):
           "type": MessageType.MESSAGE,
           "sender": self.username,
           "chat_id": self.chatroom,
-          "message": user_input
+          "message": self.encryption.encrypt(user_input)
       }
 
       self.send_message(self.server, message)
-
-  def encrypt_data(self, data: str, password: str) -> str:
-    """Encrypts data using a password."""
-    encrypter: PasswordEncryption = PasswordEncryption(password)
-    return encrypter.encrypt(data).decode()
-
-  def decrypt_data(self, data: bytes, password: str) -> str:
-    """Encrypts data using a password."""
-    encrypter: PasswordDecryption = PasswordDecryption(password)
-    return encrypter.decrypt(data)
 
 
 if __name__ == "__main__":

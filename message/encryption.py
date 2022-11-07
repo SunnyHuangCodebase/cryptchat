@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 class Encrypter(Protocol):
 
-  def encrypt(self, string: str) -> bytes:
+  def encrypt(self, string: str) -> str:
     ...
 
 
@@ -42,11 +42,11 @@ class StoredKeyEncryption:
     with open(self.path, "rb+") as file:
       file.write(self.key)
 
-  def encrypt(self, message: str) -> bytes:
+  def encrypt(self, message: str) -> str:
     """Encrypts a message using a key stored in a key file."""
     encoded_message: bytes = message.encode()
     fernet: Fernet = Fernet(self.key)
-    return fernet.encrypt(encoded_message)
+    return fernet.encrypt(encoded_message).decode()
 
 
 class StoredKeyDecryption:
@@ -101,18 +101,11 @@ class PasswordEncryption:
   def __init__(self, password: str) -> None:
     self.key = KeyGen.generate_hash(password)
 
-  def encrypt(self, message: str) -> bytes:
+  def encrypt(self, message: str) -> str:
     """Encrypts a message from a key generated from a password."""
     encoded_message: bytes = message.encode()
     fernet: Fernet = Fernet(self.key)
-    return fernet.encrypt(encoded_message)
-
-
-class PasswordDecryption:
-  key: bytes
-
-  def __init__(self, password: str) -> None:
-    self.key = KeyGen.generate_hash(password)
+    return fernet.encrypt(encoded_message).decode()
 
   def decrypt(self, encrypted_message: bytes) -> str:
     """Decrypts a message from a key generated from a password."""
@@ -121,10 +114,10 @@ class PasswordDecryption:
     return encoded_message.decode()
 
 
-def encrypt(encrypter: Encrypter) -> Callable[[str], bytes]:
+def encrypt(encrypter: Encrypter) -> Callable[[str], str]:
   """Encryption decorator. Encrypts text using a secret key."""
 
-  def wrapper(message: str) -> bytes:
+  def wrapper(message: str) -> str:
     return encrypter.encrypt(message)
 
   return wrapper
