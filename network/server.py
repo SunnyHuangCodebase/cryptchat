@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, NoReturn
 from network.config import Config, ServerConfig
 
 from network.device import Device
-from message.message_types import MessageType
+from chat.message_types import MessageType
 
 if TYPE_CHECKING:
   from socket import socket

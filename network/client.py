@@ -4,9 +4,9 @@ from typing import Any, NoReturn
 
 from network.config import ClientConfig, Config
 from network.device import Device
-from message.message_types import MessageType
+from chat.message_types import MessageType
 from user.user import User
-from message.encryption import KeyGen, PasswordEncryption
+from chat.encryption import KeyGen, PasswordEncryption
 
 #TODO: Add database verification and registration.
 

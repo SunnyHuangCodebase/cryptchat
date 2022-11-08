@@ -89,29 +89,26 @@ class KeyGen:
     kdf: PBKDF2HMAC = PBKDF2HMAC(algorithm=hashes.SHA256(),
                                  length=32,
                                  salt=salt,
-                                 iterations=100000,
+                                 iterations=480000,
                                  backend=default_backend())
 
     return base64.urlsafe_b64encode(kdf.derive(data.encode()))
 
 
 class PasswordEncryption:
-  key: bytes
+  encrypter: Fernet
 
   def __init__(self, password: str) -> None:
-    self.key = KeyGen.generate_hash(password)
+    key: bytes = KeyGen.generate_hash(password)
+    self.encrypter = Fernet(key)
 
   def encrypt(self, message: str) -> str:
     """Encrypts a message from a key generated from a password."""
-    encoded_message: bytes = message.encode()
-    fernet: Fernet = Fernet(self.key)
-    return fernet.encrypt(encoded_message).decode()
+    return self.encrypter.encrypt(message.encode()).decode()
 
   def decrypt(self, encrypted_message: bytes) -> str:
     """Decrypts a message from a key generated from a password."""
-    fernet = Fernet(self.key)
-    encoded_message = fernet.decrypt(encrypted_message)
-    return encoded_message.decode()
+    return self.encrypter.decrypt(encrypted_message).decode()
 
 
 def encrypt(encrypter: Encrypter) -> Callable[[str], str]:
@@ -130,3 +127,22 @@ def decrypt(decrypter: Decrypter) -> Callable[[bytes], str]:
     return decrypter.decrypt(message)
 
   return wrapper
+
+
+if __name__ == "__main__":
+  # e: KeyGen = KeyGen()
+  # for i in range(10):
+  #   encrypted: bytes = e.generate_hash("Chatroom", "password")
+  #   print(encrypted)
+
+  e: PasswordEncryption = PasswordEncryption("password")
+  encrypted: str = e.encrypt("some_string")
+  print(encrypted)
+  decrypted: str = e.decrypt(encrypted.encode())
+  print(decrypted)
+  print(decrypted.encode())
+
+  # decrypted = d.decrypt(encrypted)
+  # print(decrypted)
+  # print(e.encrypt("a"))
+  # print(d.generate_key("a"))

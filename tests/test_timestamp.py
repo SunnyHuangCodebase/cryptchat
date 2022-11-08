@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import pytest
 
-from message.timestamp import TimeStamp
+from chat.timestamp import TimeStamp
 
 
 class TestTimeStamp:
