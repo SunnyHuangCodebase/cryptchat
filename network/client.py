@@ -2,8 +2,8 @@ from datetime import datetime, timedelta
 from threading import Thread
 from typing import Any, NoReturn
 
-from devices.config import ClientConfig, Config
-from devices.node import Node
+from network.config import ClientConfig, Config
+from network.device import Device
 from message.message_types import MessageType
 from user.user import User
 from message.encryption import KeyGen, PasswordEncryption
@@ -13,7 +13,7 @@ from message.encryption import KeyGen, PasswordEncryption
 DELETE_PREV_LINE: str = "\033[F\033[K"
 
 
-class ChatClient(Node):
+class ChatClient(Device):
   """Chat client that transmits messages to the server."""
   config: Config
   chatroom: str

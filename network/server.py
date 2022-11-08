@@ -2,9 +2,9 @@ from __future__ import annotations
 from threading import Thread
 from threading import active_count as active_threads
 from typing import TYPE_CHECKING, Any, NoReturn
-from devices.config import Config, ServerConfig
+from network.config import Config, ServerConfig
 
-from devices.node import Node
+from network.device import Device
 from message.message_types import MessageType
 
 if TYPE_CHECKING:
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 #TODO: Create Message object
 
 
-class ChatServer(Node):
+class ChatServer(Device):
   """Chat server relaying chat messages between authorized clients."""
   config: Config
   chats: dict[str, list[socket]]

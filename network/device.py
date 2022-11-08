@@ -5,12 +5,12 @@ from socket import AF_INET, SOCK_STREAM, socket
 
 from typing import Any
 
-from devices.config import Config
+from network.config import Config
 
-#TODO: Create Address object consisting of IP: Port
+#TODO: Create Connection Address object consisting of IP: Port
 
 
-class Node(ABC):
+class Device(ABC):
   """A device capable of receiving and sending data."""
   config: Config
   server: socket = socket(AF_INET, SOCK_STREAM)
