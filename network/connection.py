@@ -1,5 +1,4 @@
 from socket import socket
-from typing import TypeVar, TypedDict
 
 Address = tuple[str, int]
 IncomingConnection = tuple[socket, Address]

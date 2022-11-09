@@ -96,6 +96,7 @@ class KeyGen:
 
 
 class PasswordEncryption:
+  """Encrypts data using a hash key generated from a password."""
   encrypter: Fernet
 
   def __init__(self, password: str) -> None:
@@ -106,9 +107,9 @@ class PasswordEncryption:
     """Encrypts a message from a key generated from a password."""
     return self.encrypter.encrypt(message.encode()).decode()
 
-  def decrypt(self, encrypted_message: bytes) -> str:
+  def decrypt(self, message: str) -> str:
     """Decrypts a message from a key generated from a password."""
-    return self.encrypter.decrypt(encrypted_message).decode()
+    return self.encrypter.decrypt(message.encode()).decode()
 
 
 def encrypt(encrypter: Encrypter) -> Callable[[str], str]:
@@ -138,7 +139,7 @@ if __name__ == "__main__":
   e: PasswordEncryption = PasswordEncryption("password")
   encrypted: str = e.encrypt("some_string")
   print(encrypted)
-  decrypted: str = e.decrypt(encrypted.encode())
+  decrypted: str = e.decrypt(encrypted)
   print(decrypted)
   print(decrypted.encode())
 

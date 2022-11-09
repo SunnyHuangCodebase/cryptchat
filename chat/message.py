@@ -1,3 +1,4 @@
+from __future__ import annotations
 from enum import auto, Enum
 
 
@@ -14,3 +15,4 @@ class MessageType(str, Enum):
 
   def __repr__(self) -> str:
     return str(self.value)
+

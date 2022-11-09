@@ -1,13 +1,8 @@
 from abc import ABC
 import json
-from pathlib import Path
 from socket import AF_INET, SOCK_STREAM, socket
 
-from typing import Any
-
 from network.config import Config
-
-#TODO: Create Connection Address object consisting of IP: Port
 
 
 class Device(ABC):
@@ -21,25 +16,25 @@ class Device(ABC):
 
     return self.config.host, self.config.port
 
-  def connect(self):
+  def connect(self) -> None:
     """Connects to another node."""
 
-  def send_message(self, server: socket, message: dict[str, Any]):
+  def send_message(self, server: socket, message: dict[str, str]) -> None:
     """Send message."""
-    json_message = json.dumps(message)
-    encoded_message = json_message.encode()
+    json_message: str = json.dumps(message)
+    encoded_message: bytes = json_message.encode()
     self._send_header(server, encoded_message)
     server.send(encoded_message)
 
-  def _send_header(self, server: socket, message: Any):
+  def _send_header(self, server: socket, message: bytes) -> None:
     """Send message header."""
-    header = f"{len(message):<{self.config.header_size}}"
+    header: str = f"{len(message):<{self.config.header_size}}"
     server.send(header.encode())
 
   def receive_message(self, client: socket) -> dict[str, str]:
     """Return incoming message."""
-    header = client.recv(self.config.header_size).decode()
-    buffer_size = int(header)
-    response = client.recv(buffer_size)
-    message = response.decode()
+    header: str = client.recv(self.config.header_size).decode()
+    buffer_size: int = int(header)
+    response: bytes = client.recv(buffer_size)
+    message: str = response.decode()
     return json.loads(message)
