@@ -8,15 +8,13 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 
-class Encrypter(Protocol):
+class Encryption(Protocol):
+  """A protocol that has encrypt and decrypt methods."""
 
-  def encrypt(self, string: str) -> str:
+  def encrypt(self, data: str) -> str:
     ...
 
-
-class Decrypter(Protocol):
-
-  def decrypt(self, string: bytes) -> str:
+  def decrypt(self, data: str) -> str:
     ...
 
 
@@ -42,35 +40,16 @@ class StoredKeyEncryption:
     with open(self.path, "rb+") as file:
       file.write(self.key)
 
-  def encrypt(self, message: str) -> str:
-    """Encrypts a message using a key stored in a key file."""
-    encoded_message: bytes = message.encode()
+  def encrypt(self, data: str) -> str:
+    """Encrypts data using a key stored in a key file."""
     fernet: Fernet = Fernet(self.key)
-    return fernet.encrypt(encoded_message).decode()
+    return fernet.encrypt(data.encode()).decode()
 
-
-class StoredKeyDecryption:
-  path: Path = Path("encryption.key")
-  key: bytes
-
-  def __init__(self) -> None:
-    key: bytes | None = self.load_key()
-
-    if not key:
-      raise Exception("No Encryption Key")
-
-    self.key = key
-
-  def load_key(self) -> bytes | None:
-    """Loads an encryption key if it exists."""
-    with open(self.path, "rb") as file:
-      return file.read()
-
-  def decrypt(self, encrypted_message: str) -> str:
-    """Decrypts a message using a key stored in a key file."""
+  def decrypt(self, data: str) -> str:
+    """Decrypts data using a key stored in a key file."""
     fernet: Fernet = Fernet(self.key)
-    encoded_message: bytes = fernet.decrypt(encrypted_message)
-    return encoded_message.decode()
+    decrypted: bytes = fernet.decrypt(data)
+    return decrypted.decode()
 
 
 class KeyGen:
@@ -103,29 +82,29 @@ class PasswordEncryption:
     key: bytes = KeyGen.generate_hash(password)
     self.encrypter = Fernet(key)
 
-  def encrypt(self, message: str) -> str:
-    """Encrypts a message from a key generated from a password."""
-    return self.encrypter.encrypt(message.encode()).decode()
+  def encrypt(self, data: str) -> str:
+    """Encrypts data from a key generated from a password."""
+    return self.encrypter.encrypt(data.encode()).decode()
 
-  def decrypt(self, message: str) -> str:
-    """Decrypts a message from a key generated from a password."""
-    return self.encrypter.decrypt(message.encode()).decode()
+  def decrypt(self, data: str) -> str:
+    """Decrypts data from a key generated from a password."""
+    return self.encrypter.decrypt(data.encode()).decode()
 
 
-def encrypt(encrypter: Encrypter) -> Callable[[str], str]:
+def encrypt(encrypter: Encryption) -> Callable[[str], str]:
   """Encryption decorator. Encrypts text using a secret key."""
 
-  def wrapper(message: str) -> str:
-    return encrypter.encrypt(message)
+  def wrapper(data: str) -> str:
+    return encrypter.encrypt(data)
 
   return wrapper
 
 
-def decrypt(decrypter: Decrypter) -> Callable[[bytes], str]:
+def decrypt(decrypter: Encryption) -> Callable[[str], str]:
   """Decryption decorator. Decrypts text using a secret key."""
 
-  def wrapper(message: bytes):
-    return decrypter.decrypt(message)
+  def wrapper(data: str) -> str:
+    return decrypter.decrypt(data)
 
   return wrapper
 
