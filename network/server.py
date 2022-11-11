@@ -3,15 +3,13 @@ from threading import Thread
 from threading import active_count as active_threads
 from typing import TYPE_CHECKING, NoReturn
 
-from chat.message import MessageType
+from chat.message import ChatMessage, MessageType, SystemMessage
 from network.config import Config, ServerConfig
 from network.connection import ClientConnection, IncomingConnection
 from network.device import Device
 
 if TYPE_CHECKING:
   from socket import socket
-
-#TODO: Create Message object
 
 
 class ChatServer(Device):
@@ -47,77 +45,50 @@ class ChatServer(Device):
   def await_messages(self, connection: ClientConnection) -> None:
     """Listens for client messages and sends the appropriate response."""
     while True:
-      message: dict[str, str] = self.receive_message(connection.client)
+      message: SystemMessage | ChatMessage = self.receive_message(
+          connection.client)
       self.send_response(connection, message)
 
-      if message["type"] == MessageType.DISCONNECT:
+      if message.message_type == MessageType.DISCONNECT:
         break
 
   def send_response(self, connection: ClientConnection,
-                    message: dict[str, str]) -> None:
+                    message: SystemMessage | ChatMessage) -> None:
     """Sends appropriate response to the client based on the user's message."""
-    if message["type"] == MessageType.MESSAGE:
+    if message.message_type == MessageType.MESSAGE:
       self.send_message_notification(message)
 
-    elif message["type"] == MessageType.CONNECT:
+    elif message.message_type == MessageType.CONNECT:
       self.connect_user_to_chat(connection, message)
 
-    elif message["type"] == MessageType.DISCONNECT:
-      self.disconnect_user_from_chat(connection)
+    elif message.message_type == MessageType.DISCONNECT:
+      self.disconnect_user_from_chat(connection, message)
 
   def connect_user_to_chat(self, connection: ClientConnection,
-                           message: dict[str, str]) -> None:
+                           message: SystemMessage | ChatMessage) -> None:
     """Connect user to a chatroom and notify all partic."""
 
-    print(f"[{connection.ip}:{connection.port}] Connected")
-
-    chat_id: str = message["chat_id"]
-
-    if chat_id in self.chats:
-      self.chats[chat_id].append(connection.client)
+    print(f"[{connection.ip}:{connection.port}] {message.sender} connected")
+    if message.chat_id in self.chats:
+      self.chats[message.chat_id].append(connection.client)
     else:
-      self.chats[chat_id] = [connection.client]
+      self.chats[message.chat_id] = [connection.client]
 
-    self.send_join_notification(message)
+    self.send_message_notification(message.generate_response())
 
-  def send_join_notification(self, message: dict[str, str]) -> None:
-    """Notify users when user joins chatroom."""
-    chat_id: str = message["chat_id"]
-    notification: dict[str, str] = {
-        "sender": "Server",
-        "participants": str(len(self.chats[chat_id])),
-        "chat_id": chat_id,
-        "message": f"{message['sender']} has joined the chatroom.",
-        "total_online": str(active_threads() - 1),
-    }
-    self.send_message_notification(notification)
-
-  def disconnect_user_from_chat(self, connection: ClientConnection) -> None:
-    """Disconnects user from chat."""
-    print(f"[{connection.ip}:{connection.port}] Disconnected")
-    connection.client.close()
-
-  def send_disconnect_notification(self, message: dict[str, str]) -> None:
+  def disconnect_user_from_chat(self, connection: ClientConnection,
+                                message: SystemMessage | ChatMessage) -> None:
     """Notify users when user leaves chatroom."""
-    chat_id: str = message["chat_id"]
-    notification: dict[str, str] = {
-        "sender": "Server",
-        "participants": str(len(self.chats[chat_id])),
-        "chat_id": chat_id,
-        "message": f"{message['sender']} has left the chatroom.",
-        "total_online": str(active_threads() - 1),
-    }
-    self.send_message_notification(notification)
+    print(f"[{connection.ip}:{connection.port}]{message.sender} disconnected")
+    self.send_message_notification(message.generate_response())
 
-  def send_message_notification(self, message: dict[str, str]) -> None:
+  def send_message_notification(self,
+                                message: SystemMessage | ChatMessage) -> None:
     """Forwards message notification to all users in a chat."""
-    print(f"{message['sender']}: {message['message']}")
-    notification: dict[str, str] = {
-        "sender": message['sender'],
-        "message": message['message']
-    }
-    for recipient in self.chats.get(message["chat_id"], []):
-      self.send_message(recipient, notification)
+    print(f"{message.sender}: {message.contents}")
+
+    for recipient in self.chats.get(message.chat_id, []):
+      self.send_message(recipient, message)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from enum import auto, Enum
-from typing import Self
 
 from chat.encryption import Encryption
 
@@ -28,7 +27,7 @@ class Message(ABC):
   chat_id: str
   contents: str
 
-  def __init__(self, sender: str, contents: str, chat_id: str):
+  def __init__(self, sender: str, contents: str, chat_id: str) -> None:
     self.sender = sender
     self.contents = contents
     self.chat_id = chat_id
@@ -43,8 +42,12 @@ class Message(ABC):
 
   @classmethod
   @abstractmethod
-  def from_json(cls, json: dict[str, str]) -> Self:
+  def from_json(cls, json_message: dict[str, str]) -> Message:
     """Alternate constructor from a json object."""
+
+  @abstractmethod
+  def generate_response(self) -> Message:
+    """Generate a server response to the message."""
 
 
 class ChatMessage(Message):
@@ -57,13 +60,17 @@ class ChatMessage(Message):
     return f"{self.sender}: {self.contents}"
 
   @classmethod
-  def from_json(cls, json: dict[str, str]) -> Self:
+  def from_json(cls, json_message: dict[str, str]) -> ChatMessage:
     """Alternate constructor from a json object."""
     return cls(
-        json["sender"],
-        json["contents"],
-        json["chat_id"],
+        json_message["sender"],
+        json_message["contents"],
+        json_message["chat_id"],
     )
+
+  def generate_response(self) -> ChatMessage:
+    """Returns self as the response."""
+    return self
 
 
 class SystemMessage(Message):
@@ -74,13 +81,23 @@ class SystemMessage(Message):
     self.message_type = message_type
 
   @classmethod
-  def from_json(cls, json: dict[str, str]) -> Self:
+  def from_json(cls, json_message: dict[str, str]) -> SystemMessage:
     """Alternate constructor from a json object."""
     return cls(
-        json["sender"],
-        json["contents"],
-        json["chat_id"],
-        json["type"],
+        json_message["sender"],
+        json_message["contents"],
+        json_message["chat_id"],
+        json_message["type"],
+    )
+
+  def generate_response(self) -> SystemMessage:
+    """Generate a server response to the message."""
+
+    return SystemMessage(
+        "Server",
+        f"{self.contents}",
+        self.chat_id,
+        self.message_type,
     )
 
 
@@ -96,10 +113,21 @@ class MessageFactory:
     self.chatroom = chatroom
     self.encryption = encryption
 
+  @staticmethod
+  def from_json(json_message: dict[str, str]) -> SystemMessage | ChatMessage:
+    """Generates a message object from json_message"""
+
+    message_type = json_message["type"]
+
+    if message_type in (MessageType.CONNECT, MessageType.DISCONNECT):
+      return SystemMessage.from_json(json_message)
+
+    return ChatMessage.from_json(json_message)
+
   def generate_login_message(self) -> SystemMessage:
     return SystemMessage(
         self.username,
-        "Connected",
+        self.encryption.encrypt(f"{self.username} connected"),
         self.chatroom,
         MessageType.CONNECT,
     )
@@ -107,7 +135,7 @@ class MessageFactory:
   def generate_logout_message(self) -> SystemMessage:
     return SystemMessage(
         self.username,
-        "Disconnected",
+        self.encryption.encrypt(f"{self.username} disconnected"),
         self.chatroom,
         MessageType.DISCONNECT,
     )

@@ -107,22 +107,3 @@ def decrypt(decrypter: Encryption) -> Callable[[str], str]:
     return decrypter.decrypt(data)
 
   return wrapper
-
-
-if __name__ == "__main__":
-  # e: KeyGen = KeyGen()
-  # for i in range(10):
-  #   encrypted: bytes = e.generate_hash("Chatroom", "password")
-  #   print(encrypted)
-
-  e: PasswordEncryption = PasswordEncryption("password")
-  encrypted: str = e.encrypt("some_string")
-  print(encrypted)
-  decrypted: str = e.decrypt(encrypted)
-  print(decrypted)
-  print(decrypted.encode())
-
-  # decrypted = d.decrypt(encrypted)
-  # print(decrypted)
-  # print(e.encrypt("a"))
-  # print(d.generate_key("a"))
